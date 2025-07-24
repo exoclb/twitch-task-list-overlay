@@ -123,11 +123,6 @@ Available in 7 languages with localized commands:
 - Check for JavaScript errors in console
 - Try refreshing the overlay in OBS
 
-### **Support**
-- 📖 Check the [documentation](./docs/)
-- 🐛 [Report bugs](https://github.com/YOUR_USERNAME/twitch-task-list-overlay/issues)
-- 💬 Join [StreamElements Discord](https://discord.gg/streamelements)
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
