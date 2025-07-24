@@ -1,0 +1,99 @@
+{
+  "widgetName": {
+    "type": "hidden",
+    "value": "Task List Overlay with Help"
+  },
+  "widgetAuthor": {
+    "type": "hidden",
+    "value": "Converted from Jujoco_Dev's original"
+  },
+  "widgetDuration": {
+    "type": "hidden",
+    "value": 0
+  },
+  "maxTasksPerUser": {
+    "type": "number",
+    "label": "Max Tasks Per User",
+    "value": 10,
+    "min": 1,
+    "max": 20,
+    "step": 1
+  },
+  "showUsernameColor": {
+    "type": "checkbox",
+    "label": "Show Username Colors",
+    "value": true
+  },
+  "headerFeature": {
+    "type": "dropdown",
+    "label": "Header Feature",
+    "value": "clock",
+    "options": {
+      "clock": "Clock",
+      "text": "Custom Text",
+      "commands": "Commands",
+      "tasks-only": "Tasks Only"
+    }
+  },
+  "headerCustomText": {
+    "type": "text",
+    "label": "Custom Header Text",
+    "value": "Custom Tasks"
+  },
+  "enableHelpCommand": {
+    "type": "checkbox",
+    "label": "Enable !help Command",
+    "value": true
+  },
+  "helpCommandResponse": {
+    "type": "text",
+    "label": "Help Command Response",
+    "value": "📝 Commands: !task [text] (add) | !edit [#] [text] | !done [#] | !delete [#] | !focus [#] | !check (view yours)"
+  },
+  "botResponsePrefix": {
+    "type": "text",
+    "label": "Bot Response Prefix",
+    "value": "🤖💬 "
+  },
+  "cardBackground": {
+    "type": "colorpicker",
+    "label": "Card Background Color",
+    "value": "#000000"
+  },
+  "cardOpacity": {
+    "type": "slider",
+    "label": "Card Background Opacity",
+    "value": 70,
+    "min": 0,
+    "max": 100,
+    "step": 1
+  },
+  "taskColor": {
+    "type": "colorpicker",
+    "label": "Task Font Color",
+    "value": "#FFFFFF"
+  },
+  "focusBackground": {
+    "type": "colorpicker",
+    "label": "Focus Background Color",
+    "value": "#FFFFFF"
+  },
+  "headerBackground": {
+    "type": "colorpicker",
+    "label": "Header Background Color",
+    "value": "#000000"
+  },
+  "headerOpacity": {
+    "type": "slider",
+    "label": "Header Background Opacity",
+    "value": 70,
+    "min": 0,
+    "max": 100,
+    "step": 1
+  },
+  "headerColor": {
+    "type": "colorpicker",
+    "label": "Header Font Color",
+    "value": "#FFFFFF"
+  }
+}
