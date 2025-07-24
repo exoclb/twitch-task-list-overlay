@@ -134,7 +134,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Credits
 
-**Original Creator:** [@Jujoco_Dev](https://twitch.tv/Jujoco_Dev)
+**Original Creator:** [@Jujoco_Dev](https://twitch.tv/Jujoco_Dev)  
 **StreamElements Integration:** Enhanced with visual help system and SE API integration  
 **Community:** Thanks to all contributors and testers  
 
