@@ -50,50 +50,18 @@ An interactive task management overlay for Twitch streamers that allows viewers 
    - Navigate to `Overlays` → Your overlay → `Add Widget` → `Custom`
 
 2. **Copy Widget Code**
-   - Download [`complete-widget-with-help.html`](./streamelements-version/complete-widget-with-help.html)
-   - Copy the entire file content
+   - Download this repository
+   - Copy the widget.html, widget.js, widget.css, and fields.json
    - Paste into StreamElements custom widget editor
 
 3. **Configure & Deploy**
    - Customize settings in the left panel
    - Click "Done" and position in your overlay
-
-### Option 2: Original Twitch Version (Advanced Setup)
-
-1. **Download Project**
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/twitch-task-list-overlay.git
-   cd twitch-task-list-overlay
-   ```
-
-2. **Setup Twitch OAuth**
-   - Follow the [detailed setup guide](./original-version/README.md)
-   - Configure `_auth.js` with your credentials
+   - Copy url overlay
 
 3. **Add to OBS**
-   - Add Browser Source pointing to `index.html`
+   - Add Browser Source pointing to `url overlay`
    - Set dimensions to 660x1600px
-
-## 📁 Repository Structure
-
-```
-twitch-task-list-overlay/
-├── streamelements-version/           # 🌟 StreamElements Widget (Easy Setup)
-│   ├── complete-widget-with-help.html   # All-in-one widget file
-│   └── separated/                        # Individual files for development
-│       ├── fields.json                   # Configuration fields
-│       ├── widget.html                   # HTML structure
-│       ├── widget.css                    # Styling
-│       ├── widget.js                     # JavaScript logic
-│       └── README.md                     # Setup instructions
-├── original-version/                 # 🔧 Original Twitch Version
-│   ├── index.html                        # Main overlay file
-│   ├── _auth.js                          # Twitch authentication
-│   ├── _settings.js                      # Behavior settings
-│   └── _styles.js                        # Visual customization
-└── docs/                            # 📚 Documentation
-    └── images/                           # Screenshots and samples
-```
 
 ## 🎛️ Configuration Options
 
@@ -124,26 +92,6 @@ Available in 7 languages with localized commands:
 - 🇩🇪 **German** (DE)
 - 🇧🇷 **Portuguese Brazilian** (PT_BR)
 
-## 🔧 Technical Details
-
-### **StreamElements Version**
-- ✅ No OAuth setup required
-- ✅ Built-in persistent storage
-- ✅ Automatic updates
-- ✅ Easy deployment
-
-### **Original Version**
-- 🔧 Requires Twitch OAuth setup
-- 🔧 Local storage system
-- 🔧 Manual configuration
-- 🔧 More customization options
-
-### **Performance**
-- **Lightweight** - Only 19 kB bundle size
-- **Optimized** - Minimal CPU usage
-- **Reliable** - Auto-backup every 30 seconds
-- **Compatible** - Works with OBS, XSplit, etc.
-
 ## 📸 Screenshots
 
 <div align="center">
@@ -161,21 +109,6 @@ Available in 7 languages with localized commands:
 4. Test thoroughly
 5. Submit a pull request
 
-### **Local Development**
-```bash
-# Clone repository
-git clone https://github.com/YOUR_USERNAME/twitch-task-list-overlay.git
-
-# For original version
-cd twitch-task-list-overlay
-npm install
-npm run dev
-
-# For StreamElements version
-# Edit files in streamelements-version/separated/
-# Test in StreamElements custom widget editor
-```
-
 ## 🆘 Troubleshooting
 
 ### **Common Issues**
@@ -190,11 +123,6 @@ npm run dev
 - Check for JavaScript errors in console
 - Try refreshing the overlay in OBS
 
-**Original version authentication issues?**
-- Double-check OAuth token in `_auth.js`
-- Ensure Twitch app has correct permissions
-- Verify channel name matches exactly
-
 ### **Support**
 - 📖 Check the [documentation](./docs/)
 - 🐛 [Report bugs](https://github.com/YOUR_USERNAME/twitch-task-list-overlay/issues)
@@ -206,7 +134,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Credits
 
-**Original Creator:** [@Jujoco_Dev](https://twitch.tv/Jujoco_Dev)  
+**Original Creator:** [@Jujoco_Dev](https://twitch.tv/Jujoco_Dev)
 **StreamElements Integration:** Enhanced with visual help system and SE API integration  
 **Community:** Thanks to all contributors and testers  
 
