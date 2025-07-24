@@ -43,8 +43,6 @@ An interactive task management overlay for Twitch streamers that allows viewers 
 
 ## 🚀 Quick Start
 
-### Option 1: StreamElements (Recommended - No Setup Required)
-
 1. **Go to StreamElements**
    - Visit [streamelements.com](https://streamelements.com)
    - Navigate to `Overlays` → Your overlay → `Add Widget` → `Custom`
