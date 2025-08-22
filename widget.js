@@ -29,21 +29,14 @@ function loadTasksFromLocalStorage() {
       const parsedData = JSON.parse(savedData);
       if (parsedData.userTasks) {
         userTasks = parsedData.userTasks;
-        // Re-render all user tasks
-        Object.entries(userTasks).forEach(([userId, tasks]) => {
-          if (tasks.length > 0) {
-            // Find username from existing DOM or use userId as fallback
-            const userCard = document.querySelector(`[data-user-id="${userId}"]`);
-            const username = userCard ? userCard.querySelector('.username').textContent : `User_${userId}`;
-            renderUserTasks(userId, username, null);
-          }
-        });
-        updateTaskCount();
-        console.log('Tasks loaded from local storage');
+        console.log(`Tasks loaded from local storage: ${Object.keys(userTasks).length} users`);
+        return true;
       }
     }
+    return false;
   } catch (error) {
     console.error('Error loading tasks from local storage:', error);
+    return false;
   }
 }
 
@@ -427,6 +420,32 @@ function renderUserTasks(userId, username, displayColor) {
   userCard.insertAdjacentHTML("beforeend", tasksHTML);
 }
 
+function renderAllUserTasks() {
+  console.log('Rendering all user tasks immediately...');
+  
+  // Ensure task container exists
+  const taskContainer = document.querySelector(".task-container");
+  if (!taskContainer) {
+    console.warn('Task container not found, cannot render tasks');
+    return;
+  }
+  
+  // Clear existing task cards to prevent duplicates
+  taskContainer.innerHTML = "";
+  
+  // Render all user tasks from memory
+  Object.entries(userTasks).forEach(([userId, tasks]) => {
+    if (tasks && tasks.length > 0) {
+      // Generate username from userId as fallback
+      const username = `User_${userId}`;
+      renderUserTasks(userId, username, null);
+      console.log(`Rendered ${tasks.length} tasks for user ${username}`);
+    }
+  });
+  
+  console.log(`Rendered tasks for ${Object.keys(userTasks).length} users`);
+}
+
 function removeUserCard(userId) {
   const userCard = document.querySelector(`[data-user-id="${userId}"]`);
   if (userCard) userCard.remove();
@@ -601,8 +620,11 @@ async function handleChatCommand(
 function initializeWidget() {
   console.log('Initializing widget with auto-reload functionality...');
   
-  // Load tasks from local storage immediately
+  // Load tasks from local storage immediately and ensure they render
   loadTasksFromLocalStorage();
+  
+  // Force immediate rendering of all loaded tasks
+  renderAllUserTasks();
   
   // Apply font family if specified
   if (fieldData.fontFamily) {
@@ -631,18 +653,14 @@ function handlePageLoad() {
   
   // Ensure tasks are loaded even if fieldData isn't ready yet
   if (Object.keys(userTasks).length === 0) {
-    loadTasksFromLocalStorage();
+    const tasksLoaded = loadTasksFromLocalStorage();
+    if (tasksLoaded) {
+      console.log('Tasks loaded during page load, rendering immediately...');
+    }
   }
   
-  // Re-render all existing tasks
-  Object.entries(userTasks).forEach(([userId, tasks]) => {
-    if (tasks.length > 0) {
-      const userCard = document.querySelector(`[data-user-id="${userId}"]`);
-      const username = userCard ? userCard.querySelector('.username').textContent : `User_${userId}`;
-      renderUserTasks(userId, username, null);
-    }
-  });
-  
+  // Force immediate rendering of all loaded tasks
+  renderAllUserTasks();
   updateTaskCount();
 }
 
@@ -666,12 +684,19 @@ window.addEventListener("beforeunload", function() {
 document.addEventListener("DOMContentLoaded", function() {
   console.log('DOM loaded, checking if widget needs initialization...');
   
-  // If fieldData isn't set yet, try to load tasks anyway
-  if (!fieldData || Object.keys(fieldData).length === 0) {
-    console.log('fieldData not ready, loading tasks from storage...');
-    loadTasksFromLocalStorage();
-    updateTaskCount();
-  }
+  // Add a small delay to ensure mock environment is ready
+  setTimeout(() => {
+    // If fieldData isn't set yet, try to load tasks anyway
+    if (!fieldData || Object.keys(fieldData).length === 0) {
+      console.log('fieldData not ready, loading tasks from storage...');
+      const tasksLoaded = loadTasksFromLocalStorage();
+      if (tasksLoaded) {
+        console.log('Tasks loaded in fallback, rendering immediately...');
+        renderAllUserTasks();
+      }
+      updateTaskCount();
+    }
+  }, 50);
 });
 
 window.addEventListener("onEventReceived", function (obj) {
