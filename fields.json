@@ -95,5 +95,22 @@
     "type": "colorpicker",
     "label": "Header Font Color",
     "value": "#FFFFFF"
+  },
+  "fontFamily": {
+    "type": "dropdown",
+    "label": "Font Family",
+    "value": "Arial",
+    "options": {
+      "Arial": "Arial, sans-serif",
+      "Helvetica": "Helvetica, Arial, sans-serif",
+      "Times": "Times New Roman, serif",
+      "Georgia": "Georgia, serif",
+      "Verdana": "Verdana, sans-serif",
+      "Courier": "Courier New, monospace",
+      "Impact": "Impact, sans-serif",
+      "Comic Sans": "Comic Sans MS, cursive",
+      "Trebuchet": "Trebuchet MS, sans-serif",
+      "Palatino": "Palatino Linotype, serif"
+    }
   }
 }

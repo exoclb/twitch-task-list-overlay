@@ -6,6 +6,47 @@ let userTasks = {};
 let clockInterval = null;
 let fieldData = {};
 
+// Local storage key for task persistence
+const LOCAL_STORAGE_KEY = 'twitch_task_list_overlay_data';
+
+// Local storage functions for task persistence
+function saveTasksToLocalStorage() {
+  try {
+    const dataToSave = {
+      userTasks: userTasks,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
+  } catch (error) {
+    console.error('Error saving tasks to local storage:', error);
+  }
+}
+
+function loadTasksFromLocalStorage() {
+  try {
+    const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (savedData) {
+      const parsedData = JSON.parse(savedData);
+      if (parsedData.userTasks) {
+        userTasks = parsedData.userTasks;
+        // Re-render all user tasks
+        Object.entries(userTasks).forEach(([userId, tasks]) => {
+          if (tasks.length > 0) {
+            // Find username from existing DOM or use userId as fallback
+            const userCard = document.querySelector(`[data-user-id="${userId}"]`);
+            const username = userCard ? userCard.querySelector('.username').textContent : `User_${userId}`;
+            renderUserTasks(userId, username, null);
+          }
+        });
+        updateTaskCount();
+        console.log('Tasks loaded from local storage');
+      }
+    }
+  } catch (error) {
+    console.error('Error loading tasks from local storage:', error);
+  }
+}
+
 // Command aliases
 const COMMANDS = {
   add: ["!task", "!add"],
@@ -15,6 +56,7 @@ const COMMANDS = {
   delete: ["!delete"],
   check: ["!check"],
   help: ["!help"],
+  toggle: ["!toggle"],
 
   clearlist: ["!clearlist"],
   cleardone: ["!cleardone"],
@@ -76,6 +118,8 @@ async function saveUserTasks(userId, tasks) {
   try {
     await SE_API.store.set(`tasks_${userId}`, tasks);
     userTasks[userId] = tasks;
+    // Also save to local storage for persistence across refreshes
+    saveTasksToLocalStorage();
   } catch (error) {
     console.error("Error saving tasks:", error);
   }
@@ -321,6 +365,30 @@ function showHelpAnnouncement(userBadges = []) {
   }
 }
 
+function toggleTasksVisibility(username) {
+  const taskContainer = document.querySelector(".task-container");
+  
+  if (!taskContainer) {
+    sendChatResponse(`@${username} Task container not found!`);
+    return;
+  }
+
+  const isCurrentlyVisible = !taskContainer.classList.contains("slide-hidden");
+  
+  if (isCurrentlyVisible) {
+    // Hide tasks with slide animation
+    taskContainer.classList.add("slide-hidden");
+    sendChatResponse(`@${username} Tasks hidden! 👁️‍🗨️`);
+  } else {
+    // Show tasks with slide animation
+    taskContainer.classList.remove("slide-hidden");
+    sendChatResponse(`@${username} Tasks shown! 👀`);
+  }
+}
+
+// Make function available globally for testing
+window.toggleTasksVisibility = toggleTasksVisibility;
+
 function renderUserTasks(userId, username, displayColor) {
   const tasks = userTasks[userId] || [];
   let userCard = document.querySelector(`[data-user-id="${userId}"]`);
@@ -434,11 +502,24 @@ async function handleChatCommand(
   if (isCommand(message, "help")) {
     if (fieldData.enableHelpCommand) {
       showHelpAnnouncement(badges);
-      sendChatResponse(
-        `${fieldData.botResponsePrefix}Help displayed on screen for ${username}! 📝`,
-        username,
-        false,
-      );
+      
+      // Send detailed command information to chat
+      const isMod = isModerator(badges);
+      let helpMessage = `@${username} 📝 Available Commands: `;
+      helpMessage += `!task [text] (add task) | !edit [#] [new text] (edit task) | `;
+      helpMessage += `!done [#] (complete task) | !delete [#] (remove task) | `;
+      helpMessage += `!focus [#] (highlight task) | !check (view your tasks) | !toggle (show/hide tasks)`;
+      
+      if (isMod) {
+        helpMessage += ` | 🔧 Mod Commands: !clearlist (clear all) | !cleardone (clear completed) | !clearuser [name] (clear user's tasks)`;
+      }
+      
+      sendChatResponse(helpMessage, "", false);
+      
+      // Also send the configured help response if different
+      if (fieldData.helpCommandResponse && fieldData.helpCommandResponse !== helpMessage) {
+        sendChatResponse(fieldData.helpCommandResponse, "", false);
+      }
     }
     return;
   }
@@ -485,6 +566,11 @@ async function handleChatCommand(
     return;
   }
 
+  if (isCommand(message, "toggle")) {
+    toggleTasksVisibility(username);
+    return;
+  }
+
   // Moderator commands
   if (isModerator(badges)) {
     if (isCommand(message, "clearlist")) {
@@ -511,9 +597,17 @@ async function handleChatCommand(
   }
 }
 
-// Event listeners
-window.addEventListener("onWidgetLoad", function (obj) {
-  fieldData = obj.detail.fieldData;
+// Auto-reload functionality
+function initializeWidget() {
+  console.log('Initializing widget with auto-reload functionality...');
+  
+  // Load tasks from local storage immediately
+  loadTasksFromLocalStorage();
+  
+  // Apply font family if specified
+  if (fieldData.fontFamily) {
+    document.body.style.fontFamily = fieldData.fontFamily;
+  }
 
   // Set header feature
   if (fieldData.headerFeature === "commands") {
@@ -528,6 +622,56 @@ window.addEventListener("onWidgetLoad", function (obj) {
   }
 
   updateTaskCount();
+  console.log('Widget initialization complete');
+}
+
+// Enhanced auto-reload on page/widget refresh
+function handlePageLoad() {
+  console.log('Page load detected, ensuring tasks are loaded...');
+  
+  // Ensure tasks are loaded even if fieldData isn't ready yet
+  if (Object.keys(userTasks).length === 0) {
+    loadTasksFromLocalStorage();
+  }
+  
+  // Re-render all existing tasks
+  Object.entries(userTasks).forEach(([userId, tasks]) => {
+    if (tasks.length > 0) {
+      const userCard = document.querySelector(`[data-user-id="${userId}"]`);
+      const username = userCard ? userCard.querySelector('.username').textContent : `User_${userId}`;
+      renderUserTasks(userId, username, null);
+    }
+  });
+  
+  updateTaskCount();
+}
+
+// Event listeners
+window.addEventListener("onWidgetLoad", function (obj) {
+  fieldData = obj.detail.fieldData;
+  initializeWidget();
+});
+
+// Additional event listeners for auto-reload functionality
+window.addEventListener("load", handlePageLoad);
+window.addEventListener("DOMContentLoaded", handlePageLoad);
+
+// Handle browser refresh/reload
+window.addEventListener("beforeunload", function() {
+  console.log('Page unloading, ensuring tasks are saved...');
+  saveTasksToLocalStorage();
+});
+
+// Fallback initialization in case onWidgetLoad doesn't fire
+document.addEventListener("DOMContentLoaded", function() {
+  console.log('DOM loaded, checking if widget needs initialization...');
+  
+  // If fieldData isn't set yet, try to load tasks anyway
+  if (!fieldData || Object.keys(fieldData).length === 0) {
+    console.log('fieldData not ready, loading tasks from storage...');
+    loadTasksFromLocalStorage();
+    updateTaskCount();
+  }
 });
 
 window.addEventListener("onEventReceived", function (obj) {

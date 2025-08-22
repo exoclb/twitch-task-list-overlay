@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Reload Test - Twitch Task List Overlay</title>
+    <link rel="stylesheet" href="widget.css">
+    <style>
+        body {
+            background: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .test-controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #333;
+            border-radius: 8px;
+        }
+        .test-controls button {
+            margin: 5px;
+            padding: 8px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-controls button:hover {
+            background: #45a049;
+        }
+        .refresh-btn {
+            background: #2196F3 !important;
+        }
+        .refresh-btn:hover {
+            background: #1976D2 !important;
+        }
+        .clear-btn {
+            background: #f44336 !important;
+        }
+        .clear-btn:hover {
+            background: #d32f2f !important;
+        }
+        .console-output {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-controls">
+        <h2>Auto-Reload Test Controls</h2>
+        <button onclick="addTestTasks()">Add Test Tasks</button>
+        <button onclick="clearTestTasks()" class="clear-btn">Clear Test Tasks</button>
+        <button onclick="location.reload()" class="refresh-btn">Refresh Page (Test Auto-Reload)</button>
+        <button onclick="testToggleCommand()" style="background: #FF9800 !important;">Test !toggle Command</button>
+        <div class="console-output" id="consoleOutput"></div>
+    </div>
+
+    <div class="widget-container">
+        <div class="header">
+            <div class="custom-header hidden">
+                <span class="header-text">{headerCustomText}</span>
+            </div>
+            <div class="clock hidden">
+                <span class="clock-time">00:00:00</span>
+            </div>
+            <div class="command-tips">
+                <span class="help-text">!help for commands</span>
+            </div>
+            <div class="task-count">0/0</div>
+        </div>
+
+        <div class="task-container"></div>
+
+        <div id="helpAnnouncement" class="help-announcement hidden">
+            <div class="help-content">
+                <h3>📝 Available Commands</h3>
+                <div class="help-commands">
+                    <div>!task [text] - Add new task</div>
+                    <div>!edit [#] [text] - Edit task</div>
+                    <div>!done [#] - Complete task</div>
+                    <div>!delete [#] - Delete task</div>
+                    <div>!focus [#] - Focus on task</div>
+                    <div>!check - View your tasks</div>
+                </div>
+                <div id="helpModCommands" class="help-mod-commands hidden">
+                    <h4>🔧 Moderator Commands:</h4>
+                    <div>!clearlist - Clear all tasks</div>
+                    <div>!cleardone - Clear completed tasks</div>
+                    <div>!clearuser [name] - Clear user's tasks</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock StreamElements environment
+        window.SE_API = {
+            store: {
+                get: function(key) {
+                    return Promise.resolve(JSON.parse(localStorage.getItem('se_' + key) || 'null'));
+                },
+                set: function(key, value) {
+                    localStorage.setItem('se_' + key, JSON.stringify(value));
+                    return Promise.resolve();
+                }
+            }
+        };
+
+        // Mock field data
+        const mockFieldData = {
+            maxTasksPerUser: 10,
+            enableHelpCommand: true,
+            botResponsePrefix: "🤖💬 ",
+            helpCommandResponse: "Use !help to see available commands",
+            showUsernameColor: true,
+            fontFamily: "Arial, sans-serif",
+            headerFeature: "commands",
+            headerCustomText: "Task List"
+        };
+
+        // Console output capture
+        const originalConsoleLog = console.log;
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            const output = document.getElementById('consoleOutput');
+            if (output) {
+                output.innerHTML += args.join(' ') + '\n';
+                output.scrollTop = output.scrollHeight;
+            }
+        };
+
+        // Test functions
+        function addTestTasks() {
+            const testData = {
+                userTasks: {
+                    "12345": [
+                        {
+                            id: "test1",
+                            text: "Complete project documentation",
+                            completed: false,
+                            focused: true,
+                            createdAt: Date.now() - 3600000
+                        },
+                        {
+                            id: "test2", 
+                            text: "Review code changes",
+                            completed: true,
+                            focused: false,
+                            createdAt: Date.now() - 1800000
+                        }
+                    ],
+                    "67890": [
+                        {
+                            id: "test3",
+                            text: "Test auto-reload functionality",
+                            completed: false,
+                            focused: false,
+                            createdAt: Date.now() - 900000
+                        }
+                    ]
+                },
+                timestamp: Date.now()
+            };
+            
+            localStorage.setItem('twitch_task_list_overlay_data', JSON.stringify(testData));
+            console.log('✅ Test tasks added to local storage');
+            console.log('📝 Tasks added:', JSON.stringify(testData.userTasks, null, 2));
+        }
+
+        function clearTestTasks() {
+            localStorage.removeItem('twitch_task_list_overlay_data');
+            console.log('🗑️ Test tasks cleared from local storage');
+            location.reload();
+        }
+
+        function testToggleCommand() {
+            console.log('🔄 Testing !toggle command...');
+            // Simulate the toggle command by calling the function directly
+            if (window.toggleTasksVisibility) {
+                window.toggleTasksVisibility('TestUser');
+            } else {
+                console.log('❌ toggleTasksVisibility function not found');
+            }
+        }
+
+        // Simulate StreamElements widget load event
+        setTimeout(() => {
+            const event = new CustomEvent('onWidgetLoad', {
+                detail: {
+                    fieldData: mockFieldData
+                }
+            });
+            window.dispatchEvent(event);
+            console.log('🚀 Mock onWidgetLoad event fired');
+        }, 100);
+
+        console.log('🔧 Test environment initialized');
+        console.log('📋 Instructions:');
+        console.log('1. Click "Add Test Tasks" to create sample data');
+        console.log('2. Click "Refresh Page" to test auto-reload');
+        console.log('3. Tasks should appear immediately after refresh');
+    </script>
+
+    <script src="widget.js"></script>
+</body>
+</html>
