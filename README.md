@@ -28,6 +28,7 @@ An interactive task management overlay for Twitch streamers that allows viewers 
 - `!delete [#]` - Delete task by number
 - `!focus [#]` - Highlight/focus on a task
 - `!check` - View your task summary
+- `!toggle` - Toggle Show/Hide Task
 - `!help` - Show command help on screen
 
 #### 🔧 **For Moderators/Broadcasters:**
