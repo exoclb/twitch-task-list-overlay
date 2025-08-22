@@ -3,17 +3,19 @@
 
 // Global variables
 let userTasks = {};
+let userNames = {}; // Store actual usernames mapped to userIds
 let clockInterval = null;
 let fieldData = {};
 
 // Local storage key for task persistence
 const LOCAL_STORAGE_KEY = 'twitch_task_list_overlay_data';
 
-// Local storage functions for task persistence
+// Storage functions for task persistence
 function saveTasksToLocalStorage() {
   try {
     const dataToSave = {
       userTasks: userTasks,
+      userNames: userNames,
       timestamp: Date.now()
     };
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
@@ -29,6 +31,7 @@ function loadTasksFromLocalStorage() {
       const parsedData = JSON.parse(savedData);
       if (parsedData.userTasks) {
         userTasks = parsedData.userTasks;
+        userNames = parsedData.userNames || {};
         console.log(`Tasks loaded from local storage: ${Object.keys(userTasks).length} users`);
         return true;
       }
@@ -37,6 +40,93 @@ function loadTasksFromLocalStorage() {
   } catch (error) {
     console.error('Error loading tasks from local storage:', error);
     return false;
+  }
+}
+
+// Username storage functions
+async function saveUserName(userId, username) {
+  try {
+    userNames[userId] = username;
+    await SE_API.store.set('userNames', userNames);
+    console.log(`Saved username ${username} for user ${userId}`);
+  } catch (error) {
+    console.error('Error saving username:', error);
+  }
+}
+
+async function loadAllUserNames() {
+  try {
+    const savedUserNames = await SE_API.store.get('userNames');
+    if (savedUserNames) {
+      userNames = savedUserNames;
+      console.log(`Loaded ${Object.keys(userNames).length} usernames from SE_API.store`);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('Error loading usernames from SE_API.store:', error);
+    return false;
+  }
+}
+
+// Centralized function to load all users' tasks from SE_API.store
+async function loadAllUsersTasksFromStore() {
+  try {
+    console.log('Loading all users tasks from SE_API.store...');
+    
+    // First, try to get the list of all user IDs who have tasks
+    const userTasksIndex = await SE_API.store.get('userTasksIndex') || [];
+    console.log(`Found ${userTasksIndex.length} users with tasks in index`);
+    
+    // Load tasks for each user
+    const loadPromises = userTasksIndex.map(async (userId) => {
+      try {
+        const tasks = await SE_API.store.get(`tasks_${userId}`);
+        if (tasks && tasks.length > 0) {
+          userTasks[userId] = tasks;
+          console.log(`Loaded ${tasks.length} tasks for user ${userId}`);
+          return { userId, tasks };
+        }
+      } catch (error) {
+        console.error(`Error loading tasks for user ${userId}:`, error);
+      }
+      return null;
+    });
+    
+    const results = await Promise.all(loadPromises);
+    const successfulLoads = results.filter(result => result !== null);
+    
+    console.log(`Successfully loaded tasks for ${successfulLoads.length} users from SE_API.store`);
+    
+    // Also save to localStorage as backup
+    if (Object.keys(userTasks).length > 0) {
+      saveTasksToLocalStorage();
+    }
+    
+    return successfulLoads.length > 0;
+  } catch (error) {
+    console.error('Error loading all users tasks from SE_API.store:', error);
+    // Fallback to localStorage if SE_API fails
+    return loadTasksFromLocalStorage();
+  }
+}
+
+// Function to maintain the index of users who have tasks
+async function updateUserTasksIndex(userId, hasTasks = true) {
+  try {
+    let userTasksIndex = await SE_API.store.get('userTasksIndex') || [];
+    
+    if (hasTasks && !userTasksIndex.includes(userId)) {
+      userTasksIndex.push(userId);
+      await SE_API.store.set('userTasksIndex', userTasksIndex);
+      console.log(`Added user ${userId} to tasks index`);
+    } else if (!hasTasks && userTasksIndex.includes(userId)) {
+      userTasksIndex = userTasksIndex.filter(id => id !== userId);
+      await SE_API.store.set('userTasksIndex', userTasksIndex);
+      console.log(`Removed user ${userId} from tasks index`);
+    }
+  } catch (error) {
+    console.error('Error updating user tasks index:', error);
   }
 }
 
@@ -111,6 +201,10 @@ async function saveUserTasks(userId, tasks) {
   try {
     await SE_API.store.set(`tasks_${userId}`, tasks);
     userTasks[userId] = tasks;
+    
+    // Update the user tasks index
+    await updateUserTasksIndex(userId, tasks.length > 0);
+    
     // Also save to local storage for persistence across refreshes
     saveTasksToLocalStorage();
   } catch (error) {
@@ -436,10 +530,10 @@ function renderAllUserTasks() {
   // Render all user tasks from memory
   Object.entries(userTasks).forEach(([userId, tasks]) => {
     if (tasks && tasks.length > 0) {
-      // Generate username from userId as fallback
-      const username = `User_${userId}`;
+      // Use stored username if available, otherwise fallback to User_${userId}
+      const username = userNames[userId] || `User_${userId}`;
       renderUserTasks(userId, username, null);
-      console.log(`Rendered ${tasks.length} tasks for user ${username}`);
+      console.log(`Rendered ${tasks.length} tasks for user ${username} (ID: ${userId})`);
     }
   });
   
@@ -516,6 +610,15 @@ async function handleChatCommand(
 ) {
   const args = message.trim().split(" ");
   const content = args.slice(1).join(" ").trim();
+
+  // Save username for this user ID if we have a valid username
+  if (username && userId && username !== `User_${userId}`) {
+    // Only save if it's different from what we have stored
+    if (userNames[userId] !== username) {
+      await saveUserName(userId, username);
+      console.log(`Username updated: ${username} for user ID ${userId}`);
+    }
+  }
 
   // Help command
   if (isCommand(message, "help")) {
@@ -617,11 +720,29 @@ async function handleChatCommand(
 }
 
 // Auto-reload functionality
-function initializeWidget() {
+async function initializeWidget() {
   console.log('Initializing widget with auto-reload functionality...');
   
-  // Load tasks from local storage immediately and ensure they render
-  loadTasksFromLocalStorage();
+  // Load usernames first
+  try {
+    await loadAllUserNames();
+  } catch (error) {
+    console.error('Error loading usernames:', error);
+  }
+  
+  // Load tasks from SE_API.store first, fallback to localStorage
+  try {
+    const tasksLoaded = await loadAllUsersTasksFromStore();
+    if (tasksLoaded) {
+      console.log('Tasks loaded from SE_API.store during initialization');
+    } else {
+      console.log('No tasks found in SE_API.store, checking localStorage...');
+      loadTasksFromLocalStorage();
+    }
+  } catch (error) {
+    console.error('Error loading from SE_API.store, falling back to localStorage:', error);
+    loadTasksFromLocalStorage();
+  }
   
   // Force immediate rendering of all loaded tasks
   renderAllUserTasks();
@@ -648,14 +769,28 @@ function initializeWidget() {
 }
 
 // Enhanced auto-reload on page/widget refresh
-function handlePageLoad() {
+async function handlePageLoad() {
   console.log('Page load detected, ensuring tasks are loaded...');
   
   // Ensure tasks are loaded even if fieldData isn't ready yet
   if (Object.keys(userTasks).length === 0) {
-    const tasksLoaded = loadTasksFromLocalStorage();
-    if (tasksLoaded) {
-      console.log('Tasks loaded during page load, rendering immediately...');
+    try {
+      const tasksLoaded = await loadAllUsersTasksFromStore();
+      if (tasksLoaded) {
+        console.log('Tasks loaded from SE_API.store during page load');
+      } else {
+        console.log('No tasks in SE_API.store, trying localStorage...');
+        const localTasksLoaded = loadTasksFromLocalStorage();
+        if (localTasksLoaded) {
+          console.log('Tasks loaded from localStorage during page load');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading from SE_API.store during page load, trying localStorage:', error);
+      const localTasksLoaded = loadTasksFromLocalStorage();
+      if (localTasksLoaded) {
+        console.log('Tasks loaded from localStorage as fallback during page load');
+      }
     }
   }
   
