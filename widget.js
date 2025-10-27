@@ -512,6 +512,9 @@ function renderUserTasks(userId, username, displayColor) {
   userCard.innerHTML = "";
   userCard.appendChild(usernameElement);
   userCard.insertAdjacentHTML("beforeend", tasksHTML);
+
+  // Autoscroll after rendering tasks
+  setTimeout(() => autoScrollTaskContainer(), 100);
 }
 
 function renderAllUserTasks() {
@@ -558,6 +561,17 @@ function updateTaskCount() {
   const taskCountElement = document.querySelector(".task-count");
   if (taskCountElement) {
     taskCountElement.textContent = `${completedTasks}/${totalTasks}`;
+  }
+}
+
+// Autoscroll function for task container
+function autoScrollTaskContainer(smooth = true) {
+  const taskContainer = document.querySelector(".task-container");
+  if (taskContainer) {
+    taskContainer.scrollTo({
+      top: taskContainer.scrollHeight,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
   }
 }
 
