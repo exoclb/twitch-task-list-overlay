@@ -112,5 +112,26 @@
       "Trebuchet": "Trebuchet MS, sans-serif",
       "Palatino": "Palatino Linotype, serif"
     }
+  },
+  "enableAutoScroll": {
+    "type": "checkbox",
+    "label": "Enable Auto-Scroll Carousel",
+    "value": true
+  },
+  "autoScrollPauseDuration": {
+    "type": "slider",
+    "label": "Pause Duration Per Card (seconds)",
+    "value": 5,
+    "min": 2,
+    "max": 15,
+    "step": 1
+  },
+  "autoScrollSpeed": {
+    "type": "slider",
+    "label": "Scroll Transition Speed (seconds)",
+    "value": 1,
+    "min": 0.5,
+    "max": 3,
+    "step": 0.5
   }
 }
