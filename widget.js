@@ -7,6 +7,12 @@ let userNames = {}; // Store actual usernames mapped to userIds
 let clockInterval = null;
 let fieldData = {};
 
+// Auto-scroll carousel variables
+let autoScrollInterval = null;
+let autoScrollTimeouts = [];
+let currentScrollIndex = 0;
+let isAutoScrollPaused = false;
+
 // Local storage key for task persistence
 const LOCAL_STORAGE_KEY = 'twitch_task_list_overlay_data';
 
@@ -144,6 +150,8 @@ const COMMANDS = {
   clearlist: ["!clearlist"],
   cleardone: ["!cleardone"],
   clearuser: ["!clearuser"],
+  pausescroll: ["!pausescroll"],
+  resumescroll: ["!resumescroll"],
 };
 
 // Utility functions
@@ -513,8 +521,12 @@ function renderUserTasks(userId, username, displayColor) {
   userCard.appendChild(usernameElement);
   userCard.insertAdjacentHTML("beforeend", tasksHTML);
 
-  // Autoscroll after rendering tasks
-  setTimeout(() => autoScrollTaskContainer(), 100);
+  // Restart auto-scroll carousel after rendering tasks
+  setTimeout(() => {
+    if (fieldData.enableAutoScroll) {
+      startAutoScrollCarousel();
+    }
+  }, 100);
 }
 
 function renderAllUserTasks() {
@@ -541,6 +553,13 @@ function renderAllUserTasks() {
   });
   
   console.log(`Rendered tasks for ${Object.keys(userTasks).length} users`);
+
+  // Start auto-scroll carousel after rendering all tasks
+  setTimeout(() => {
+    if (fieldData.enableAutoScroll) {
+      startAutoScrollCarousel();
+    }
+  }, 200);
 }
 
 function removeUserCard(userId) {
@@ -564,7 +583,7 @@ function updateTaskCount() {
   }
 }
 
-// Autoscroll function for task container
+// Autoscroll function for task container (legacy - scroll to bottom)
 function autoScrollTaskContainer(smooth = true) {
   const taskContainer = document.querySelector(".task-container");
   if (taskContainer) {
@@ -574,6 +593,150 @@ function autoScrollTaskContainer(smooth = true) {
     });
   }
 }
+
+// Auto-scroll carousel functions
+function stopAutoScrollCarousel() {
+  if (autoScrollInterval) {
+    clearInterval(autoScrollInterval);
+    autoScrollInterval = null;
+  }
+
+  // Clear all pending timeouts
+  autoScrollTimeouts.forEach(timeout => clearTimeout(timeout));
+  autoScrollTimeouts = [];
+
+  console.log('Auto-scroll carousel stopped');
+}
+
+function scrollToCard(cardIndex) {
+  const taskContainer = document.querySelector(".task-container");
+  const userCards = taskContainer.querySelectorAll(".user-card");
+
+  if (!userCards || userCards.length === 0) {
+    return false;
+  }
+
+  // Loop back to start if we've reached the end
+  if (cardIndex >= userCards.length) {
+    cardIndex = 0;
+  }
+
+  const targetCard = userCards[cardIndex];
+  if (targetCard) {
+    // Calculate the position to scroll to
+    const containerTop = taskContainer.scrollTop;
+    const cardTop = targetCard.offsetTop;
+    const containerHeight = taskContainer.clientHeight;
+    const cardHeight = targetCard.offsetHeight;
+
+    // Center the card in the viewport if possible
+    let scrollTarget = cardTop - (containerHeight / 2) + (cardHeight / 2);
+
+    // Ensure we don't scroll past the bottom
+    const maxScroll = taskContainer.scrollHeight - containerHeight;
+    scrollTarget = Math.min(Math.max(0, scrollTarget), maxScroll);
+
+    taskContainer.scrollTo({
+      top: scrollTarget,
+      behavior: 'smooth'
+    });
+
+    return true;
+  }
+
+  return false;
+}
+
+function startAutoScrollCarousel() {
+  // Don't start if disabled or paused
+  if (!fieldData.enableAutoScroll || isAutoScrollPaused) {
+    console.log('Auto-scroll not started: disabled or paused');
+    return;
+  }
+
+  // Stop any existing carousel
+  stopAutoScrollCarousel();
+
+  const taskContainer = document.querySelector(".task-container");
+  if (!taskContainer) {
+    console.log('Task container not found');
+    return;
+  }
+
+  const userCards = taskContainer.querySelectorAll(".user-card");
+  if (!userCards || userCards.length === 0) {
+    console.log('No user cards found for auto-scroll');
+    return;
+  }
+
+  // If only one card, no need to scroll
+  if (userCards.length === 1) {
+    console.log('Only one card, auto-scroll not needed');
+    return;
+  }
+
+  console.log(`Starting auto-scroll carousel with ${userCards.length} cards`);
+
+  // Reset to first card
+  currentScrollIndex = 0;
+  scrollToCard(currentScrollIndex);
+
+  // Calculate total cycle time (pause + transition time per card)
+  const pauseDuration = (fieldData.autoScrollPauseDuration || 5) * 1000;
+  const scrollSpeed = (fieldData.autoScrollSpeed || 1) * 1000;
+  const totalCycleTime = pauseDuration + scrollSpeed;
+
+  // Start the carousel loop
+  autoScrollInterval = setInterval(() => {
+    if (isAutoScrollPaused) {
+      console.log('Auto-scroll paused, skipping cycle');
+      return;
+    }
+
+    // Move to next card
+    currentScrollIndex++;
+
+    // Check if we need to loop back
+    const userCards = document.querySelectorAll(".user-card");
+    if (currentScrollIndex >= userCards.length) {
+      currentScrollIndex = 0;
+
+      // Scroll to top first, then to first card
+      const taskContainer = document.querySelector(".task-container");
+      taskContainer.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Wait for scroll to top, then scroll to first card
+      const timeout = setTimeout(() => {
+        scrollToCard(0);
+      }, scrollSpeed);
+      autoScrollTimeouts.push(timeout);
+    } else {
+      scrollToCard(currentScrollIndex);
+    }
+  }, totalCycleTime);
+
+  console.log(`Auto-scroll carousel started with ${totalCycleTime}ms cycle time`);
+}
+
+function pauseAutoScrollCarousel() {
+  isAutoScrollPaused = true;
+  console.log('Auto-scroll carousel paused');
+}
+
+function resumeAutoScrollCarousel() {
+  isAutoScrollPaused = false;
+
+  // Restart the carousel if it was stopped
+  if (!autoScrollInterval && fieldData.enableAutoScroll) {
+    startAutoScrollCarousel();
+  }
+
+  console.log('Auto-scroll carousel resumed');
+}
+
+// Make functions globally available for commands
+window.pauseAutoScrollCarousel = pauseAutoScrollCarousel;
+window.resumeAutoScrollCarousel = resumeAutoScrollCarousel;
 
 function clearAllTasks() {
   userTasks = {};
@@ -647,7 +810,7 @@ async function handleChatCommand(
       helpMessage += `!focus [#] (highlight task) | !check (view your tasks) | !toggle (show/hide tasks)`;
       
       if (isMod) {
-        helpMessage += ` | 🔧 Mod Commands: !clearlist (clear all) | !cleardone (clear completed) | !clearuser [name] (clear user's tasks)`;
+        helpMessage += ` | 🔧 Mod Commands: !clearlist (clear all) | !cleardone (clear completed) | !clearuser [name] (clear user's tasks) | !pausescroll (pause carousel) | !resumescroll (resume carousel)`;
       }
       
       sendChatResponse(helpMessage, "", false);
@@ -730,6 +893,18 @@ async function handleChatCommand(
       }
       return;
     }
+
+    if (isCommand(message, "pausescroll")) {
+      pauseAutoScrollCarousel();
+      sendChatResponse("Auto-scroll carousel paused ⏸️");
+      return;
+    }
+
+    if (isCommand(message, "resumescroll")) {
+      resumeAutoScrollCarousel();
+      sendChatResponse("Auto-scroll carousel resumed ▶️");
+      return;
+    }
   }
 }
 
@@ -779,6 +954,12 @@ async function initializeWidget() {
   }
 
   updateTaskCount();
+
+  // Start auto-scroll carousel if enabled
+  if (fieldData.enableAutoScroll) {
+    setTimeout(() => startAutoScrollCarousel(), 500);
+  }
+
   console.log('Widget initialization complete');
 }
 
